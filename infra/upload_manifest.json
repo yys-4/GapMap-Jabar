@@ -1,0 +1,35 @@
+{
+  "uploaded_at": "2026-04-22T00:00:00Z",
+  "files": [
+    {
+      "name": "demografi_kecamatan_jabar.csv",
+      "size_kb": 0,
+      "blob_url": "https://<storage-account>.blob.core.windows.net/raw-data/demografi_kecamatan_jabar.csv"
+    },
+    {
+      "name": "puskesmas_jabar.csv",
+      "size_kb": 0,
+      "blob_url": "https://<storage-account>.blob.core.windows.net/raw-data/puskesmas_jabar.csv"
+    },
+    {
+      "name": "sekolah_jabar.csv",
+      "size_kb": 0,
+      "blob_url": "https://<storage-account>.blob.core.windows.net/raw-data/sekolah_jabar.csv"
+    },
+    {
+      "name": "batas_kecamatan_jabar.geojson",
+      "size_kb": 0,
+      "blob_url": "https://<storage-account>.blob.core.windows.net/raw-data/batas_kecamatan_jabar.geojson"
+    },
+    {
+      "name": "master_kecamatan.csv",
+      "size_kb": 0,
+      "blob_url": "https://<storage-account>.blob.core.windows.net/processed-data/master_kecamatan.csv"
+    },
+    {
+      "name": "top_50_gap_kecamatan.csv",
+      "size_kb": 0,
+      "blob_url": "https://<storage-account>.blob.core.windows.net/processed-data/top_50_gap_kecamatan.csv"
+    }
+  ]
+}
