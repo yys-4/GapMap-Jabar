@@ -1,4 +1,4 @@
-# Pangan Watch
+# GapMap Jabar
 
 A data-driven infrastructure and facility distribution analysis platform targeting the West Java region. The system ingests, processes, and visualizes geospatial distribution data of public facilities (markets, schools, health centers) to identify gaps and support strategic decision-making.
 
