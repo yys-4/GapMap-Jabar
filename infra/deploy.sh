@@ -119,11 +119,12 @@ echo "[STEP 3] Menyiapkan Azure ML extension"
 az extension add --name ml --upgrade --yes --output none
 
 echo "[STEP 3] Membuat AML Workspace ${AML_WORKSPACE_NAME}"
+STORAGE_ACCOUNT_ID="$(az storage account show --name "${STORAGE_ACCOUNT_NAME}" --resource-group "${RESOURCE_GROUP}" --query id -o tsv)"
 az ml workspace create \
   --name "${AML_WORKSPACE_NAME}" \
   --resource-group "${RESOURCE_GROUP}" \
   --location "${LOCATION}" \
-  --storage-account "${STORAGE_ACCOUNT_NAME}" \
+  --storage-account "${STORAGE_ACCOUNT_ID}" \
   --tags ${TAGS} \
   --output none
 
@@ -142,10 +143,10 @@ echo "[STEP 4] Membuat Azure Maps account ${MAPS_ACCOUNT_NAME}"
 az maps account create \
   --name "${MAPS_ACCOUNT_NAME}" \
   --resource-group "${RESOURCE_GROUP}" \
-  --location "${LOCATION}" \
+  --location "global" \
   --sku G2 \
   --kind Gen2 \
-  --accept-tos true \
+  --accept-tos \
   --tags ${TAGS} \
   --output none
 
@@ -169,22 +170,12 @@ APPINSIGHTS_CONNECTION_STRING="$(az monitor app-insights component show \
   --resource-group "${RESOURCE_GROUP}" \
   --query connectionString -o tsv)"
 
-echo "[STEP 5] Membuat Function App plan (Consumption/Linux)"
-az functionapp plan create \
-  --resource-group "${RESOURCE_GROUP}" \
-  --name "${FUNCTION_PLAN_NAME}" \
-  --location "${LOCATION}" \
-  --sku Y1 \
-  --is-linux \
-  --tags ${TAGS} \
-  --output none
-
-echo "[STEP 5] Membuat Function App ${FUNCTION_APP_NAME}"
+echo "[STEP 5] Membuat Function App ${FUNCTION_APP_NAME} (Consumption/Linux)"
 az functionapp create \
   --resource-group "${RESOURCE_GROUP}" \
   --name "${FUNCTION_APP_NAME}" \
   --storage-account "${STORAGE_ACCOUNT_NAME}" \
-  --plan "${FUNCTION_PLAN_NAME}" \
+  --consumption-plan-location "${LOCATION}" \
   --runtime python \
   --runtime-version 3.11 \
   --functions-version 4 \
@@ -201,40 +192,46 @@ az functionapp config appsettings set \
 echo "[STEP 6] Menyiapkan extension staticwebapp"
 az extension add --name staticwebapp --upgrade --yes --output none
 
-GITHUB_REPO_URL="${GITHUB_REPO_URL:-}"
-GITHUB_BRANCH="${GITHUB_BRANCH:-main}"
-GITHUB_TOKEN="${GITHUB_TOKEN:-}"
-
-if [[ -z "${GITHUB_REPO_URL}" ]]; then
-  read -r -p "Masukkan URL GitHub repo untuk Static Web App (contoh: https://github.com/org/repo): " GITHUB_REPO_URL
-fi
-
 echo "[STEP 6] Membuat Static Web App ${STATIC_WEB_APP_NAME}"
 SWA_ARGS=(
   --name "${STATIC_WEB_APP_NAME}"
   --resource-group "${RESOURCE_GROUP}"
-  --location "${LOCATION}"
+  --location "eastasia"
   --sku Free
-  --source "${GITHUB_REPO_URL}"
-  --branch "${GITHUB_BRANCH}"
-  --app-location "/frontend"
-  --output-location ".next"
+  --tags ${TAGS}
 )
 
-if [[ -n "${GITHUB_TOKEN}" ]]; then
-  SWA_ARGS+=(--token "${GITHUB_TOKEN}")
+if [[ -n "${GITHUB_TOKEN:-}" ]] && [[ -n "${GITHUB_REPO_URL:-}" ]]; then
+  SWA_ARGS+=(
+    --source "${GITHUB_REPO_URL}"
+    --branch "${GITHUB_BRANCH:-main}"
+    --token "${GITHUB_TOKEN}"
+    --app-location "/frontend"
+    --output-location ".next"
+  )
+else
+  echo "[INFO] GITHUB_TOKEN tidak ditemukan. Static Web App akan dibuat tanpa integrasi GitHub otomatis."
 fi
 
 az staticwebapp create "${SWA_ARGS[@]}" --output none
 
 echo "[STEP 7] Membuat Key Vault ${KEYVAULT_NAME}"
-az keyvault create \
-  --name "${KEYVAULT_NAME}" \
-  --resource-group "${RESOURCE_GROUP}" \
-  --location "${LOCATION}" \
-  --sku standard \
-  --tags ${TAGS} \
-  --output none
+if az keyvault show --name "${KEYVAULT_NAME}" --resource-group "${RESOURCE_GROUP}" >/dev/null 2>&1; then
+  echo "Key Vault ${KEYVAULT_NAME} sudah ada, melewati pembuatan."
+else
+  az keyvault create \
+    --name "${KEYVAULT_NAME}" \
+    --resource-group "${RESOURCE_GROUP}" \
+    --location "${LOCATION}" \
+    --sku standard \
+    --enable-rbac-authorization false \
+    --tags ${TAGS} \
+    --output none
+fi
+
+echo "[STEP 7] Memberi akses Key Vault ke user saat ini"
+USER_OID=$(az ad signed-in-user show --query id -o tsv)
+az keyvault set-policy --name "${KEYVAULT_NAME}" --object-id "$USER_OID" --secret-permissions all --output none
 
 echo "[STEP 7] Menyimpan secrets ke Key Vault"
 az keyvault secret set --vault-name "${KEYVAULT_NAME}" --name AZURE-MAPS-KEY --value "${AZURE_MAPS_KEY}" --output none
@@ -247,15 +244,15 @@ STORAGE_CONNECTION_STRING="$(az storage account show-connection-string \
   --query connectionString -o tsv)"
 
 cat > infra/outputs.env <<EOF
-AZURE_RESOURCE_GROUP=${RESOURCE_GROUP}
-AZURE_STORAGE_ACCOUNT_NAME=${STORAGE_ACCOUNT_NAME}
-AZURE_STORAGE_CONNECTION_STRING=${STORAGE_CONNECTION_STRING}
-AZURE_AML_WORKSPACE_NAME=${AML_WORKSPACE_NAME}
-AZURE_MAPS_KEY=${AZURE_MAPS_KEY}
-AZURE_FUNCTION_APP_NAME=${FUNCTION_APP_NAME}
-AZURE_STATIC_WEB_APP_NAME=${STATIC_WEB_APP_NAME}
-AZURE_KEY_VAULT_NAME=${KEYVAULT_NAME}
-AZURE_SUBSCRIPTION_ID=${SUBSCRIPTION_ID}
+AZURE_RESOURCE_GROUP="${RESOURCE_GROUP}"
+AZURE_STORAGE_ACCOUNT_NAME="${STORAGE_ACCOUNT_NAME}"
+AZURE_STORAGE_CONNECTION_STRING="${STORAGE_CONNECTION_STRING}"
+AZURE_AML_WORKSPACE_NAME="${AML_WORKSPACE_NAME}"
+AZURE_MAPS_KEY="${AZURE_MAPS_KEY}"
+AZURE_FUNCTION_APP_NAME="${FUNCTION_APP_NAME}"
+AZURE_STATIC_WEB_APP_NAME="${STATIC_WEB_APP_NAME}"
+AZURE_KEY_VAULT_NAME="${KEYVAULT_NAME}"
+AZURE_SUBSCRIPTION_ID="${SUBSCRIPTION_ID}"
 EOF
 
 echo ""

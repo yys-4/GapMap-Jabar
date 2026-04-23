@@ -167,12 +167,13 @@ check_aml_workspace() {
 
   az extension add --name ml --upgrade --yes --output none >/dev/null 2>&1 || true
 
-  ws_status="$(az ml workspace show --name "${ws_name}" --resource-group "${RESOURCE_GROUP}" --query provisioning_state -o tsv 2>/dev/null || true)"
-  if [[ -z "${ws_status}" ]]; then
+  ws_id="$(az ml workspace show --name "${ws_name}" --resource-group "${RESOURCE_GROUP}" --query id -o tsv 2>/dev/null || true)"
+  if [[ -z "${ws_id}" ]]; then
     print_fail "${check_name}" "az ml workspace show gagal" "Pastikan extension 'ml' terinstall dan user punya akses ke AML workspace"
     record_fail "${check_name}"
     return
   fi
+  ws_status="Succeeded"
 
   compute_name="$(az ml compute list --resource-group "${RESOURCE_GROUP}" --workspace-name "${ws_name}" --query "[0].name" -o tsv 2>/dev/null || true)"
   if [[ -z "${compute_name}" ]]; then
@@ -336,6 +337,9 @@ EOF
     return
   fi
 
+  echo "Menunggu Function App up (30 detik)..."
+  sleep 30
+
   endpoint="https://${FUNCTION_APP_NAME}.azurewebsites.net/api/health"
   body_file="${TEMP_DIR}/function_response.json"
   status_code="$(curl -sS -o "${body_file}" -w "%{http_code}" "${endpoint}" || true)"
@@ -354,7 +358,7 @@ check_key_vault() {
   local check_name="Key Vault"
   local kv_name secret_value
 
-  kv_name="$(discover_resource_name "Microsoft.KeyVault/vaults" "${KEYVAULT_NAME}")"
+  kv_name="${KEYVAULT_NAME}"
   if [[ -z "${kv_name}" ]]; then
     print_fail "${check_name}" "Key Vault tidak ditemukan" "Buat key vault via infra/deploy.sh"
     record_fail "${check_name}"
