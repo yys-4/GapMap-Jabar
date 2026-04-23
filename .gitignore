@@ -67,3 +67,5 @@ CLOUD_BRIDGE.md
 DEPLOY.md
 
 specs/*
+infra/upload_manifest.json
+infra/outputs.env
