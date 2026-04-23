@@ -1,0 +1,2 @@
+# Requirements untuk upload script
+azure-storage-blob==12.14.1

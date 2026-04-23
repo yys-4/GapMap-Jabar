@@ -1,0 +1,7 @@
+# Requirements untuk Azure ML Notebook
+pandas==2.0.3
+geopandas==0.12.1
+matplotlib==3.7.1
+shapely==2.0.1
+azure-storage-blob==12.14.1
+azure-identity==1.13.0
