@@ -1,0 +1,6 @@
+# Requirements untuk Azure Functions
+azure-functions==1.15.0
+pandas==2.0.3
+azure-storage-blob==12.14.1
+azure-keyvault-secrets==4.4.0
+azure-identity==1.13.0
